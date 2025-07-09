@@ -12,6 +12,7 @@ cache:
   paths:
     - .pulumi
     - __pycache__/
+    - .venv/
 
 variables:
   AWS_REGION: "us-east-2"
@@ -33,11 +34,19 @@ validate:
     - |
       if [ ! -f "requirements.txt" ]; then
         echo "ERROR: requirements.txt not found!"
+        echo "Please create requirements.txt with Pulumi dependencies"
         exit 1
       fi
     - |
       if [ ! -f "Pulumi.yaml" ]; then
         echo "ERROR: Pulumi.yaml not found!"
+        echo "Please run 'pulumi new' to initialize your project"
+        exit 1
+      fi
+    - |
+      if [ ! -f "__main__.py" ]; then
+        echo "ERROR: __main__.py not found!"
+        echo "Please create your main Pulumi program file"
         exit 1
       fi
     - echo "Project structure validation passed"
@@ -47,13 +56,21 @@ validate:
 install:
   stage: install
   script:
+    - echo "Setting up Python virtual environment"
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - echo "Upgrading pip"
+    - pip install --upgrade pip
     - echo "Installing Python dependencies"
     - pip install -r requirements.txt
-    - echo "Dependencies installed"
+    - echo "Verifying Pulumi installation"
+    - python -c "import pulumi; print('Pulumi version:', pulumi.__version__)"
+    - echo "Dependencies installed successfully"
   artifacts:
     paths:
       - .pulumi
       - __pycache__/
+      - .venv/
     expire_in: 1h
   only:
     - branches
@@ -62,6 +79,8 @@ install:
 preview:
   stage: preview
   script:
+    - echo "Activating virtual environment"
+    - source .venv/bin/activate
     - echo "Running Pulumi preview"
     - pulumi stack select dev || pulumi stack init dev
     - pulumi preview --stack dev --diff --non-interactive --color always
