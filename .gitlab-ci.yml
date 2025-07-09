@@ -25,7 +25,6 @@ install:
   stage: install
   script:
     - echo "Installing dependencies"
-    - cd src  # Change to your actual subdirectory if needed
     - npm install
     - pulumi plugin install resource aws
   artifacts:
