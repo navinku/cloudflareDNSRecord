@@ -25,8 +25,8 @@ jobs:
           GITLAB_URL: ${{ secrets.GITLAB_URL }}
         run: |
           # Configure Git user
-          git config --global user.name ${GITLAB_USERNAME}
-          git config --global user.email ${GITLAB_EMAIL}
+          git config --global user.name "${GITLAB_USERNAME}"
+          git config --global user.email "${GITLAB_EMAIL}"
 
           # Add GitLab as a remote
           git remote add gitlab https://oauth2:${GITLAB_TOKEN}@${GITLAB_URL}
