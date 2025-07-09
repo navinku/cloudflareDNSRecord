@@ -66,7 +66,8 @@ preview:
   stage: preview
   script:
     - echo "Running Pulumi preview"
-    - pulumi preview --diff --non-interactive --color always
+    - pulumi stack select dev || pulumi stack init dev
+    - pulumi preview --stack dev --diff --non-interactive --color always
   dependencies:
     - install
   only:
