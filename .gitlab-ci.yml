@@ -1,0 +1,62 @@
+image:
+  name: pulumi/pulumi:latest
+  entrypoint: [""]
+
+stages:
+  - install
+  - preview
+  - deploy
+
+cache:
+  paths:
+    - .pulumi
+    - node_modules
+
+before_script:
+  - echo "Setting up environment variables"
+  - export PULUMI_CONFIG_PASSPHRASE=$PULUMI_CONFIG_PASSPHRASE
+  - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+  - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+  - export PULUMI_BACKEND_URL="s3://${PULUMI_S3_BUCKET}"  # Set backend from env
+  - pulumi login ${PULUMI_BACKEND_URL}
+
+install:
+  stage: install
+  script:
+    - echo "Installing dependencies"
+    - npm install
+    - pulumi plugin install resource aws
+  artifacts:
+    paths:
+      - .pulumi # Cache Pulumi state
+      - node_modules # Cache node modules for subsequent jobs
+  only:
+    - branches  # Run on branches only
+  when: always  # Always run this job
+
+preview:
+  stage: preview
+  script:
+    - echo "Running Pulumi preview"
+    - pulumi preview --diff --non-interactive --color always
+  only:
+    - branches  # Run on branches only
+  when: manual  # Manual trigger for preview
+
+deploy-to-production:
+  stage: deploy
+  script:
+    - echo "Running Pulumi up"
+    - pulumi up --yes --non-interactive --color always
+  only:
+    - main  # Run on main branch only
+  when: manual  # Manual trigger for deployment
+
+deployment-production:
+  stage: deploy
+  script:
+    - echo "Running Pulumi up for production"
+    - pulumi destroy --yes --non-interactive --color always
+  only:
+    - main  # Run on main branch only
+  when: manual  # Manual trigger for deployment to production
