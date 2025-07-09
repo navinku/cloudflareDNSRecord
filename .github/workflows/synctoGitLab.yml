@@ -22,13 +22,14 @@ jobs:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
           GITLAB_EMAIL: ${{ secrets.GITLAB_EMAIL }}
+          GITLAB_URL: ${{ secrets.GITLAB_URL }}
         run: |
           # Configure Git user
           git config --global user.name "${GITLAB_USERNAME}"
           git config --global user.email "${GITLAB_EMAIL}"
 
           # Add GitLab as a remote
-          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.trendintown.com/devops/cloudflarednsrecord.git || true
+          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@${GITLAB_URL} || true
 
           # Push to GitLab (force to ensure sync)
           # git push --force gitlab main
