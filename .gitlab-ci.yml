@@ -10,11 +10,11 @@ stages:
 cache:
   paths:
     - .pulumi
-    - node_modules
+    - node_modules/
 
 before_script:
   - echo "Setting up environment variables"
-  - aws configure set region us-east-2  # Set your AWS region
+  - export AWS_REGION="us-east-2"  # Set your AWS region
   - export PULUMI_CONFIG_PASSPHRASE=$PULUMI_CONFIG_PASSPHRASE
   - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
   - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
@@ -26,11 +26,12 @@ install:
   script:
     - echo "Installing dependencies"
     - npm install
-    - pulumi plugin install resource aws
+    - echo "Installing dependencies completed"
   artifacts:
     paths:
       - .pulumi
-      - node_modules
+      - node_modules/
+    expire_in: 1h
   only:
     - branches
   when: always  # Always run this job
