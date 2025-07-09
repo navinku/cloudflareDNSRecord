@@ -1,5 +1,5 @@
 image:
-  name: pulumi/pulumi:latest
+  name: pulumi/pulumi-python:latest
   entrypoint: [""]
 
 stages:
@@ -11,7 +11,7 @@ stages:
 cache:
   paths:
     - .pulumi
-    - node_modules/
+    - __pycache__/
 
 variables:
   AWS_REGION: "us-east-2"
@@ -31,36 +31,33 @@ validate:
   script:
     - echo "Validating project structure"
     - |
-      if [ ! -f "package.json" ]; then
-        echo "ERROR: package.json not found!"
-        echo "Please run 'pulumi new' to initialize your project"
+      if [ ! -f "requirements.txt" ]; then
+        echo "ERROR: requirements.txt not found!"
         exit 1
       fi
     - |
       if [ ! -f "Pulumi.yaml" ]; then
         echo "ERROR: Pulumi.yaml not found!"
-        echo "Please run 'pulumi new' to initialize your project"
         exit 1
       fi
     - echo "Project structure validation passed"
   only:
     - branches
 
-  
 install:
   stage: install
   script:
-    - echo "Installing dependencies"
-    - npm ci --cache .npm --prefer-offline
-    - echo "Installing dependencies completed"
+    - echo "Installing Python dependencies"
+    - pip install -r requirements.txt
+    - echo "Dependencies installed"
   artifacts:
     paths:
       - .pulumi
-      - node_modules/
+      - __pycache__/
     expire_in: 1h
   only:
     - branches
-  when: always  # Always run this job
+  when: always
 
 preview:
   stage: preview
@@ -71,8 +68,8 @@ preview:
   dependencies:
     - install
   only:
-    - branches  # Run on branches only
-  when: manual  # Manual trigger for preview
+    - branches
+  when: manual
 
 deploy-to-production:
   stage: deploy
@@ -80,14 +77,14 @@ deploy-to-production:
     - echo "Running Pulumi up"
     - pulumi up --yes --non-interactive --color always
   only:
-    - main  # Run on main branch only
-  when: manual  # Manual trigger for deployment
+    - main
+  when: manual
 
 deployment-production:
   stage: deploy
   script:
-    - echo "Running Pulumi up for production"
+    - echo "Running Pulumi destroy for production"
     - pulumi destroy --yes --non-interactive --color always
   only:
-    - main  # Run on main branch only
-  when: manual  # Manual trigger for deployment to production
+    - main
+  when: manual
