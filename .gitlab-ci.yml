@@ -25,14 +25,15 @@ install:
   stage: install
   script:
     - echo "Installing dependencies"
+    - cd src  # Change to your actual subdirectory if needed
     - npm install
     - pulumi plugin install resource aws
   artifacts:
     paths:
-      - .pulumi # Cache Pulumi state
-      - node_modules # Cache node modules for subsequent jobs
+      - .pulumi
+      - node_modules
   only:
-    - branches  # Run on branches only
+    - branches
   when: always  # Always run this job
 
 preview:
