@@ -1,10 +1,6 @@
 name: cloudflareDNSRecord
 description: A minimal Python Pulumi program
-runtime:
-  name: python
-  options:
-    toolchain: pip
-    virtualenv: venv
+runtime: python
 config:
   pulumi:tags:
     value:
