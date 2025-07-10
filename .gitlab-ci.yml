@@ -66,6 +66,7 @@ validate:
 install:
   stage: install
   script:
+    - rm -rf .venv
     - echo "Setting up Python virtual environment"
     - python3 -m venv .venv
     - source .venv/bin/activate
