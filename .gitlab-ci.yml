@@ -6,7 +6,7 @@ stages:
   - validate
   - install
   - preview
-  - deploy
+  - dev
 
 cache:
   paths:
@@ -75,6 +75,8 @@ install:
   only:
     - branches
   when: always
+  dependencies:
+    - validate
 
 preview:
   stage: preview
@@ -88,12 +90,13 @@ preview:
     - install
   only:
     - branches
-  when: manual
+  # Changed from 'manual' to 'on_success' to run automatically
+  when: on_success
   needs:
     - install
 
 deploy-to-dev:
-  stage: deploy
+  stage: dev
   script:
     - echo "Running Pulumi up"
     - pulumi stack select dev || pulumi stack init dev
@@ -102,10 +105,10 @@ deploy-to-dev:
     - main
   when: manual
   needs:
-    - install
+    - preview  # Changed from install to preview to maintain proper flow
 
-deployment-dev:
-  stage: deploy
+destroy-dev:
+  stage: dev
   script:
     - echo "Running Pulumi destroy for dev"
     - pulumi stack select dev || pulumi stack init dev
@@ -113,3 +116,7 @@ deployment-dev:
   only:
     - main
   when: manual
+  dependencies:
+    - deploy-to-dev
+  needs:
+    - deploy-to-dev
