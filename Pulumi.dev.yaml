@@ -1,1 +1,5 @@
 encryptionsalt: v1:qsTNxh0Jd4k=:v1:sN1bJ8mKq1FRTm22:/yqwYJGJ5JzzUxvlWLfl7MCvxqM7nA==
+config:
+  cloudflarednsrecord:apiToken:
+    secure: v1:WC1zc5EGp2Cl/gCY:RZjlXoxCPt2ZV4DYIeCRIm62aF7epyKsDQ/frqJZkj2aU2UM31QE4y1iJLpmkbJKPK473Wt64OA=
+  cloudflarednsrecord:zoneId: caf84ff9b91df2110eba63b530a0360c
