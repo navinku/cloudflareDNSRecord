@@ -9,7 +9,7 @@ cloudflare_config = config.require_object("cloudflare")
 cloudflare_provider = cloudflare.Provider(
     "cloudflare-provider",
     api_token=cloudflare_config.get("apiToken"),  # Get from object
-    opts=pulumi.ResourceOptions(version="4.0.0")
+    opts=pulumi.ResourceOptions(version="5.49.1")
 )
 
 def load_dns_records(record_type):
@@ -24,11 +24,12 @@ def load_dns_records(record_type):
 def create_dns_records(record_type):
     records = load_dns_records(record_type)
     for record in records:
+        record_type_normalized = record_type.upper().replace('RECORD', '')
         cloudflare.Record(
             f"{record_type}-{record['name']}",
             zone_id=cloudflare_config.get("zoneId"),
             name=record['name'],
-            type=record_type.upper(),  # A or CNAME
+            type=record_type_normalized,  # A or CNAME
             value=record.get('content') or record.get('value'),
             ttl=record.get('ttl', 1),
             proxied=record.get('proxied', True),
