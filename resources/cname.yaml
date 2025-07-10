@@ -1,0 +1,9 @@
+- name: "blog"
+  value: "example.com"
+  proxied: true
+  comment: "Example CNAME Record"
+
+- name: "app"
+  value: "example.net"
+  comment: "Example CNAME Record 2nd"
+  proxied: false
