@@ -29,9 +29,11 @@ before_script:
   - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
   - export PULUMI_BACKEND_URL=$PULUMI_BACKEND_URL
   - pulumi login ${PULUMI_BACKEND_URL}
-  # Add Cloudflare config for the selected stack
+  # Set Cloudflare provider configuration
   - pulumi config set cloudflare:apiToken $CLOUDFLARE_API_TOKEN --secret --stack ${STACK_NAME}
-  - pulumi config set cloudflare:zoneId $CLOUDFLARE_ZONE_ID --stack ${STACK_NAME}
+  # Set project-specific configurations
+  - pulumi config set cloudflareDNSRecord:zoneId $CLOUDFLARE_ZONE_ID --stack ${STACK_NAME}
+  - pulumi config set cloudflareDNSRecord:cloudflare "{\"zoneId\":\"$CLOUDFLARE_ZONE_ID\"}" --stack ${STACK_NAME}
 
 validate:
   stage: validate

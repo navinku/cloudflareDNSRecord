@@ -6,12 +6,12 @@ cloudflare_config = config.require_object("cloudflare")
 
 cloudflare_provider = cloudflare.Provider(
     "cloudflare-provider",
-    api_token=cloudflare_config.get("apiToken")
+    api_token=cloudflare_config.get("apiToken")  # Get from object
 )
 
 dns_record = cloudflare.Record(
     "example-dns-record",
-    zone_id=cloudflare_config.get("zoneId"),  # Get zone ID from config
+    zone_id=cloudflare_config.get("zoneId"),
     name="example",
     type="A",
     value="192.0.2.1",
@@ -19,6 +19,3 @@ dns_record = cloudflare.Record(
     comment="Managed by Pulumi",
     opts=pulumi.ResourceOptions(provider=cloudflare_provider)
 )
-
-pulumi.export("dns_record_id", dns_record.id)
-pulumi.export("dns_record_fqdn", dns_record.hostname)
