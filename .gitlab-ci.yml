@@ -15,6 +15,8 @@ cache:
     - .venv/
 
 variables:
+  GIT_DEPTH: "1"
+  GIT_STRATEGY: clone
   AWS_REGION: "us-east-2"
   PULUMI_BACKEND_URL: "s3://${PULUMI_S3_BUCKET}"
   # Dynamic stack selection - users can override this when running pipeline
@@ -104,15 +106,34 @@ preview:
 
 deploy-to-dev:
   stage: dev
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  before_script:
+    - echo "Setting up environment variables"
+    - echo "Selected stack:" ${STACK_NAME}
+    - export AWS_REGION=$AWS_REGION
+    - export PULUMI_CONFIG_PASSPHRASE=$PULUMI_CONFIG_PASSPHRASE
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+    - export PULUMI_BACKEND_URL=$PULUMI_BACKEND_URL
+    - pulumi login ${PULUMI_BACKEND_URL}
+    # Set Cloudflare provider configuration
+    - pulumi config set cloudflare:apiToken $CLOUDFLARE_API_TOKEN --secret --stack ${STACK_NAME}
+    # Set project-specific configurations
+    - pulumi config set cloudflareDNSRecord:zoneId $CLOUDFLARE_ZONE_ID --stack ${STACK_NAME}
+    - pulumi config set cloudflareDNSRecord:cloudflare "{\"zoneId\":\"$CLOUDFLARE_ZONE_ID\"}" --stack ${STACK_NAME}
   script:
     - echo "Activating virtual environment"
     - source .venv/bin/activate
     - echo "Running Pulumi up for stack:" ${STACK_NAME}
     - pulumi stack select ${STACK_NAME} || pulumi stack init ${STACK_NAME}
     - pulumi up --yes --non-interactive --color always --no-preview --stack ${STACK_NAME}
-  only:
-    - main
-  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
   needs:
     - preview
 
