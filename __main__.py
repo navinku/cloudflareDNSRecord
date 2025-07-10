@@ -9,16 +9,11 @@ from pulumi.log import warn, error
 config = pulumi.Config()
 cloudflare_config = config.require_object("cloudflare")
 
-# Initialize Cloudflare provider with retry configuration
+# Initialize Cloudflare provider with correct options
 cloudflare_provider = cloudflare.Provider(
     "cloudflare-provider",
     api_token=cloudflare_config.get("apiToken"),
-    opts=pulumi.ResourceOptions(
-        version="5.49.1",
-        retryable_errors=["context deadline exceeded"],
-        retry_max_attempts=3,
-        retry_delay_seconds=5
-    )
+    opts=pulumi.ResourceOptions(version="5.49.1")
 )
 
 def load_dns_records(record_type):
@@ -45,8 +40,8 @@ def record_exists(zone_id, name, record_type):
         records = cloudflare.get_dns_records(
             zone_id=zone_id,
             filter={
-                "name": name,
-                "type": record_type
+                "name": f"{name}",  # Ensure string type
+                "type": f"{record_type}"
             }
         )
         return len(records.records) > 0
@@ -54,8 +49,8 @@ def record_exists(zone_id, name, record_type):
         error(f"Error checking record existence {name}: {str(e)}")
         return False
 
-def create_dns_record(record_type, record):
-    """Create a DNS record with proper error handling and retries"""
+def create_dns_record_with_retry(record_type, record):
+    """Create a DNS record with manual retry logic"""
     record_name = record['name']
     content = record.get('content') or record.get('value')
     record_type = record.get('type', record_type.upper().replace('RECORD', ''))
@@ -63,12 +58,12 @@ def create_dns_record(record_type, record):
     ttl = 1 if proxied else record.get('ttl', 300)
     zone_id = cloudflare_config.get("zoneId")
     
-    # Check if record exists first
+    # Skip if record exists
     if record_exists(zone_id, record_name, record_type):
         warn(f"Record {record_name} ({record_type}) already exists - skipping creation")
         return None
     
-    # Create with retry logic
+    # Manual retry logic
     max_attempts = 3
     for attempt in range(max_attempts):
         try:
@@ -87,12 +82,12 @@ def create_dns_record(record_type, record):
                 )
             )
         except Exception as e:
-            if "context deadline exceeded" in str(e) and attempt < max_attempts - 1:
-                wait_time = (attempt + 1) * 5
+            if attempt < max_attempts - 1:
+                wait_time = (attempt + 1) * 2  # Exponential backoff
                 warn(f"Attempt {attempt + 1} failed for {record_name}. Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
                 continue
-            error(f"Failed to create record {record_name}: {str(e)}")
+            error(f"Failed to create record {record_name} after {max_attempts} attempts: {str(e)}")
             return None
 
 def create_dns_records(record_type):
@@ -101,7 +96,7 @@ def create_dns_records(record_type):
     successful_records = 0
     
     for record in records:
-        result = create_dns_record(record_type, record)
+        result = create_dns_record_with_retry(record_type, record)
         if result:
             successful_records += 1
     
