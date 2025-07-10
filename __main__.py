@@ -34,52 +34,57 @@ def load_dns_records(record_type):
 def create_dns_record(record_type, record):
     record_name = record['name']
     content = record.get('content') or record.get('value')
-    record_type = record.get('type', record_type.upper().replace('RECORD', ''))
+    dns_type = record.get('type', record_type.upper().replace('RECORD', ''))
     proxied = record.get('proxied', False)
     ttl = 1 if proxied else record.get('ttl', 300)
     zone_id = cloudflare_config.get("zoneId")
     
+    # Create a unique resource name using your original approach
+    resource_name = f"{dns_type}-{record_name.replace('.', '-')}"
+    
     try:
-        existing = cloudflare.Record.get(
-            f"{record_type}-{record_name.replace('.', '-')}-check",
-            f"{zone_id}/{record_type}/{record_name}",
-            opts=pulumi.ResourceOptions(provider=cloudflare_provider)
-        )
-        warn(f"Record {record_name} ({record_type}) already exists - skipping creation")
-        return None
-    except:
-        try:
-            return cloudflare.Record(
-                f"{record_type}-{record_name.replace('.', '-')}",
-                zone_id=zone_id,
-                name=record_name,
-                type=record_type,
-                content=content,
-                ttl=ttl,
-                proxied=proxied,
-                comment=record.get('comment', "Managed by Pulumi"),
-                opts=pulumi.ResourceOptions(
-                    provider=cloudflare_provider,
-                    ignore_changes=["comment"]
-                )
+        # Create the DNS record directly without checking existence
+        # Pulumi will handle updates automatically if the record already exists
+        return cloudflare.Record(
+            resource_name,
+            zone_id=zone_id,
+            name=record_name,
+            type=dns_type,
+            content=content,
+            ttl=ttl,
+            proxied=proxied,
+            comment=record.get('comment', "Managed by Pulumi"),
+            opts=pulumi.ResourceOptions(
+                provider=cloudflare_provider,
+                ignore_changes=["comment"],
+                # Import existing records if they exist
+                import_=record.get('import_id') if record.get('import_id') else None
             )
-        except Exception as e:
-            error(f"Failed to create record {record_name}: {str(e)}")
-            return None
+        )
+    except Exception as e:
+        error(f"Failed to create record {record_name}: {str(e)}")
+        return None
 
 def create_dns_records(record_type):
     records = load_dns_records(record_type)
     successful_records = 0
+    created_records = []
     
     for record in records:
         result = create_dns_record(record_type, record)
         if result:
             successful_records += 1
+            created_records.append(result)
     
     if successful_records > 0:
         pulumi.export(f"{record_type}_records_created", successful_records)
-    elif records:  
+        pulumi.export(f"{record_type}_records", [r.name for r in created_records])
+    elif records:
         warn(f"No {record_type} records were processed successfully")
+    
+    return created_records
 
-create_dns_records("arecord")
-create_dns_records("cname")
+a_records = create_dns_records("arecord")
+cname_records = create_dns_records("cname")
+
+pulumi.export("total_records_managed", len(a_records) + len(cname_records))
