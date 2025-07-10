@@ -6,6 +6,7 @@ stages:
   - validate
   - install
   - preview
+  - refresh
   - dev
 
 cache:
@@ -88,6 +89,20 @@ install:
   when: always
   dependencies:
     - validate
+
+refresh:
+  stage: refresh
+  script:
+    - echo "Activating virtual environment"
+    - source .venv/bin/activate
+    - echo "Running Pulumi preview for stack:" ${STACK_NAME}
+    - pulumi stack select ${STACK_NAME} || pulumi stack init ${STACK_NAME}
+    - pulumi refresh --yes --non-interactive --color always --skip-preview --stack ${STACK_NAME}
+  only:
+    - branches
+  when: manual
+  needs:
+    - install
 
 preview:
   stage: preview

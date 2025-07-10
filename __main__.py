@@ -6,11 +6,10 @@ from pulumi.log import warn, error
 
 config = pulumi.Config()
 cloudflare_config = config.require_object("cloudflare")
-
 cloudflare_provider = cloudflare.Provider(
     "cloudflare-provider",
-    api_token=cloudflare_config.get("apiToken"),  # Get from object
-    version="5.49.1"
+    api_token=cloudflare_config.get("apiToken"),
+    opts=pulumi.ResourceOptions(version="5.49.1")
 )
 
 def load_dns_records(record_type):
@@ -32,46 +31,28 @@ def load_dns_records(record_type):
 
 def create_or_update_record(record_type, record):
     try:
-        # Normalize input
+       
         record_name = record['name']
         content = record.get('content') or record.get('value')
         record_type = record.get('type', record_type.upper().replace('RECORD', ''))
         proxied = record.get('proxied', False)
         ttl = 1 if proxied else record.get('ttl', 300)
         
-        existing_records = cloudflare.get_record_output(
+        return cloudflare.Record(
+            f"{record_type}-{record_name}",
             zone_id=cloudflare_config.get("zoneId"),
-            hostname=record_name,
-            type=record_type
+            name=record_name,
+            type=record_type,
+            content=content,
+            ttl=ttl,
+            proxied=proxied,
+            comment=record.get('comment', "Managed by Pulumi"),
+            opts=pulumi.ResourceOptions(
+                provider=cloudflare_provider,
+                protect=True, 
+                ignore_changes=["comment"] 
+            )
         )
-        
-        if existing_records.id:
-            return cloudflare.Record(
-                f"{record_type}-{record_name}",
-                zone_id=cloudflare_config.get("zoneId"),
-                name=record_name,
-                type=record_type,
-                content=content,
-                ttl=ttl,
-                proxied=proxied,
-                comment=record.get('comment', "Managed by Pulumi"),
-                opts=pulumi.ResourceOptions(
-                    provider=cloudflare_provider,
-                    retain_on_delete=True
-                )
-            )
-        else:
-            return cloudflare.Record(
-                f"{record_type}-{record_name}",
-                zone_id=cloudflare_config.get("zoneId"),
-                name=record_name,
-                type=record_type,
-                content=content,
-                ttl=ttl,
-                proxied=proxied,
-                comment=record.get('comment', "Managed by Pulumi"),
-                opts=pulumi.ResourceOptions(provider=cloudflare_provider)
-            )
             
     except Exception as e:
         error(f"Failed to process record {record_name}: {str(e)}")
