@@ -39,7 +39,7 @@ def create_dns_record(record_type, record):
     ttl = 1 if proxied else record.get('ttl', 300)
     zone_id = cloudflare_config.get("zoneId")
     
-    # Create a unique resource name using your original approach
+    # Create a unique resource name
     resource_name = f"{dns_type}-{record_name.replace('.', '-')}"
     
     try:
