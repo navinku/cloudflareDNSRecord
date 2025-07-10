@@ -14,9 +14,8 @@ dns_record = cloudflare.Record(
     zone_id=cloudflare_config.get("zoneId"),
     name="example",
     type="A",
-    content="192.0.2.1",
-    ttl=1,  # Auto TTL
-    proxied=True,
+    value="192.0.2.1",
+    ttl=3600,
     comment="Managed by Pulumi",
     opts=pulumi.ResourceOptions(provider=cloudflare_provider)
 )
