@@ -89,20 +89,26 @@ preview:
   only:
     - branches
   when: manual
+  needs:
+    - install
 
-deploy-to-production:
+deploy-to-dev:
   stage: deploy
   script:
     - echo "Running Pulumi up"
-    - pulumi up --yes --non-interactive --color always
+    - pulumi stack select dev || pulumi stack init dev
+    - pulumi up --yes --non-interactive --color always --no-preview
   only:
     - main
   when: manual
+  needs:
+    - install
 
-deployment-production:
+deployment-dev:
   stage: deploy
   script:
-    - echo "Running Pulumi destroy for production"
+    - echo "Running Pulumi destroy for dev"
+    - pulumi stack select dev || pulumi stack init dev
     - pulumi destroy --yes --non-interactive --color always
   only:
     - main
