@@ -5,11 +5,9 @@ import time
 from pathlib import Path
 from pulumi.log import warn, error
 
-# Load configuration
 config = pulumi.Config()
 cloudflare_config = config.require_object("cloudflare")
 
-# Initialize Cloudflare provider with correct options
 cloudflare_provider = cloudflare.Provider(
     "cloudflare-provider",
     api_token=cloudflare_config.get("apiToken"),
@@ -17,7 +15,6 @@ cloudflare_provider = cloudflare.Provider(
 )
 
 def load_dns_records(record_type):
-    """Load DNS records from YAML files with validation"""
     try:
         with open(f"resources/{record_type}.yaml") as f:
             records = yaml.safe_load(f) or []
@@ -34,23 +31,7 @@ def load_dns_records(record_type):
         error(f"Error loading {record_type}.yaml: {str(e)}")
         return []
 
-def record_exists(zone_id, name, record_type):
-    """Check if a record already exists in Cloudflare"""
-    try:
-        records = cloudflare.get_dns_records(
-            zone_id=zone_id,
-            filter={
-                "name": f"{name}",  # Ensure string type
-                "type": f"{record_type}"
-            }
-        )
-        return len(records.records) > 0
-    except Exception as e:
-        error(f"Error checking record existence {name}: {str(e)}")
-        return False
-
-def create_dns_record_with_retry(record_type, record):
-    """Create a DNS record with manual retry logic"""
+def create_dns_record(record_type, record):
     record_name = record['name']
     content = record.get('content') or record.get('value')
     record_type = record.get('type', record_type.upper().replace('RECORD', ''))
@@ -58,14 +39,15 @@ def create_dns_record_with_retry(record_type, record):
     ttl = 1 if proxied else record.get('ttl', 300)
     zone_id = cloudflare_config.get("zoneId")
     
-    # Skip if record exists
-    if record_exists(zone_id, record_name, record_type):
+    try:
+        existing = cloudflare.Record.get(
+            f"{record_type}-{record_name.replace('.', '-')}-check",
+            f"{zone_id}/{record_type}/{record_name}",
+            opts=pulumi.ResourceOptions(provider=cloudflare_provider)
+        )
         warn(f"Record {record_name} ({record_type}) already exists - skipping creation")
         return None
-    
-    # Manual retry logic
-    max_attempts = 3
-    for attempt in range(max_attempts):
+    except:
         try:
             return cloudflare.Record(
                 f"{record_type}-{record_name.replace('.', '-')}",
@@ -82,29 +64,22 @@ def create_dns_record_with_retry(record_type, record):
                 )
             )
         except Exception as e:
-            if attempt < max_attempts - 1:
-                wait_time = (attempt + 1) * 2  # Exponential backoff
-                warn(f"Attempt {attempt + 1} failed for {record_name}. Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
-                continue
-            error(f"Failed to create record {record_name} after {max_attempts} attempts: {str(e)}")
+            error(f"Failed to create record {record_name}: {str(e)}")
             return None
 
 def create_dns_records(record_type):
-    """Process all DNS records of a given type"""
     records = load_dns_records(record_type)
     successful_records = 0
     
     for record in records:
-        result = create_dns_record_with_retry(record_type, record)
+        result = create_dns_record(record_type, record)
         if result:
             successful_records += 1
     
     if successful_records > 0:
         pulumi.export(f"{record_type}_records_created", successful_records)
-    elif records:  # Only warn if there were records to process
+    elif records:  
         warn(f"No {record_type} records were processed successfully")
 
-# Create records from YAML files
 create_dns_records("arecord")
 create_dns_records("cname")
