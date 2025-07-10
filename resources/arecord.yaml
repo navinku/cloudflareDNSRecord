@@ -1,13 +1,24 @@
 - name: "example"
-  value: "192.0.2.1"  # Using 'value' instead of 'content' for consistency
-  type: "A"           # Explicit type declaration
-  ttl: 3600
-  proxied: true
+  content: "192.0.2.1"
+  type: "A"
+  ttl: 300             # Only used if proxied=false
+  proxied: false       # If true, TTL will be automatically set to 1
   comment: "Example A Record"
 
 - name: "blog"
-  value: "example.com"
-  type: "CNAME"       # Explicit type declaration
-  ttl: 3600
+  content: "203.0.113.1"
+  proxied: true        # TTL will be forced to 1
+  comment: "Proxied A Record"
+
+- name: "www"
+  content: "example.com"
+  type: "CNAME"
   proxied: true
-  comment: "Example CNAME Record"
+  comment: "Proxied CNAME Record"
+
+- name: "api"
+  content: "example.net"
+  type: "CNAME"
+  ttl: 600
+  proxied: false
+  comment: "Non-proxied CNAME Record"

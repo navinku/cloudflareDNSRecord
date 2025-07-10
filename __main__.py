@@ -24,15 +24,16 @@ def load_dns_records(record_type):
 def create_dns_records(record_type):
     records = load_dns_records(record_type)
     for record in records:
-        record_type_normalized = record_type.upper().replace('RECORD', '')
+        # TTL must be 1 when proxied is True
+        ttl = 1 if record.get('proxied', False) else record.get('ttl', 300)
         cloudflare.Record(
             f"{record_type}-{record['name']}",
             zone_id=cloudflare_config.get("zoneId"),
             name=record['name'],
-            type=record_type_normalized,  # A or CNAME
-            value=record.get('content') or record.get('value'),
-            ttl=record.get('ttl', 1),
-            proxied=record.get('proxied', True),
+            type=record.get('type', record_type.upper().replace('RECORD', '')),
+            content=record.get('content') or record.get('value'),
+            ttl=ttl,
+            proxied=record.get('proxied', False),
             comment=record.get('comment', "Managed by Pulumi"),
             opts=pulumi.ResourceOptions(provider=cloudflare_provider)
         )
