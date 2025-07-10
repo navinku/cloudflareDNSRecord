@@ -2,6 +2,7 @@ import pulumi
 import pulumi_cloudflare as cloudflare
 import yaml
 from pathlib import Path
+from pulumi.log import warn, error
 
 config = pulumi.Config()
 cloudflare_config = config.require_object("cloudflare")
@@ -9,34 +10,86 @@ cloudflare_config = config.require_object("cloudflare")
 cloudflare_provider = cloudflare.Provider(
     "cloudflare-provider",
     api_token=cloudflare_config.get("apiToken"),  # Get from object
-    opts=pulumi.ResourceOptions(version="5.49.1")
+    version="5.49.1"
 )
 
 def load_dns_records(record_type):
-    records = []
     try:
         with open(f"resources/{record_type}.yaml") as f:
             records = yaml.safe_load(f) or []
+            for record in records:
+                if 'name' not in record:
+                    raise ValueError(f"Record missing required field 'name' in {record_type}.yaml")
+                if not record.get('content') and not record.get('value'):
+                    raise ValueError(f"Record {record['name']} missing 'content' or 'value'")
+            return records
     except FileNotFoundError:
-        pulumi.log.warn(f"No {record_type} records file found at resources/{record_type}.yaml")
-    return records
+        warn(f"No {record_type} records file found at resources/{record_type}.yaml")
+        return []
+    except Exception as e:
+        error(f"Error loading {record_type}.yaml: {str(e)}")
+        return []
+
+def create_or_update_record(record_type, record):
+    try:
+        # Normalize input
+        record_name = record['name']
+        content = record.get('content') or record.get('value')
+        record_type = record.get('type', record_type.upper().replace('RECORD', ''))
+        proxied = record.get('proxied', False)
+        ttl = 1 if proxied else record.get('ttl', 300)
+        
+        existing_records = cloudflare.get_record_output(
+            zone_id=cloudflare_config.get("zoneId"),
+            hostname=record_name,
+            type=record_type
+        )
+        
+        if existing_records.id:
+            return cloudflare.Record(
+                f"{record_type}-{record_name}",
+                zone_id=cloudflare_config.get("zoneId"),
+                name=record_name,
+                type=record_type,
+                content=content,
+                ttl=ttl,
+                proxied=proxied,
+                comment=record.get('comment', "Managed by Pulumi"),
+                opts=pulumi.ResourceOptions(
+                    provider=cloudflare_provider,
+                    retain_on_delete=True
+                )
+            )
+        else:
+            return cloudflare.Record(
+                f"{record_type}-{record_name}",
+                zone_id=cloudflare_config.get("zoneId"),
+                name=record_name,
+                type=record_type,
+                content=content,
+                ttl=ttl,
+                proxied=proxied,
+                comment=record.get('comment', "Managed by Pulumi"),
+                opts=pulumi.ResourceOptions(provider=cloudflare_provider)
+            )
+            
+    except Exception as e:
+        error(f"Failed to process record {record_name}: {str(e)}")
+        return None
 
 def create_dns_records(record_type):
     records = load_dns_records(record_type)
+    successful_records = 0
+    
     for record in records:
-        # TTL must be 1 when proxied is True
-        ttl = 1 if record.get('proxied', False) else record.get('ttl', 300)
-        cloudflare.Record(
-            f"{record_type}-{record['name']}",
-            zone_id=cloudflare_config.get("zoneId"),
-            name=record['name'],
-            type=record.get('type', record_type.upper().replace('RECORD', '')),
-            content=record.get('content') or record.get('value'),
-            ttl=ttl,
-            proxied=record.get('proxied', False),
-            comment=record.get('comment', "Managed by Pulumi"),
-            opts=pulumi.ResourceOptions(provider=cloudflare_provider)
-        )
+        result = create_or_update_record(record_type, record)
+        if result:
+            successful_records += 1
+    
+    if successful_records > 0:
+        pulumi.export(f"{record_type}_records_created", successful_records)
+    else:
+        warn(f"No {record_type} records were processed successfully")
 
 create_dns_records("arecord")
 create_dns_records("cname")

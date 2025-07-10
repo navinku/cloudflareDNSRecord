@@ -10,7 +10,7 @@
   proxied: true        # TTL will be forced to 1
   comment: "Proxied A Record"
 
-- name: "www"
+- name: "subdomain"
   content: "example.com"
   type: "CNAME"
   proxied: true
