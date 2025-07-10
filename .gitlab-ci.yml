@@ -67,12 +67,15 @@ install:
   stage: install
   script:
     - echo "Setting up Python virtual environment"
-    - python3 -m venv .venv
+    - python3 -m venv --system-site-packages .venv
     - source .venv/bin/activate
     - echo "Upgrading pip"
     - pip install --upgrade pip
     - echo "Installing Python dependencies"
-    - pip install -r requirements.txt
+    - pip install --no-cache-dir -r requirements.txt
+    - find .venv -type d -name '__pycache__' -exec rm -rf {} +
+    - find .venv -type d -name 'tests' -exec rm -rf {} +
+    - find .venv -type d -name '*.dist-info' -exec rm -rf {} +
     - echo "Verifying Pulumi installation"
     - python -c "import pulumi; print('Pulumi version:', pulumi._version)"
     - echo "Dependencies installed successfully"
