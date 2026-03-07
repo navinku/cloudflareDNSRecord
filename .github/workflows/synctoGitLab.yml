@@ -32,6 +32,6 @@ jobs:
           git remote add gitlab https://oauth2:${GITLAB_TOKEN}@${GITLAB_URL} || true
 
           # Push to GitLab (force to ensure sync)
-          # git push --force gitlab main
+          git push --force gitlab main
           # git push gitlab main:sync-main
-          git push gitlab main
+          # git push gitlab main
