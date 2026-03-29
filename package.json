@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/pulumi": "^3.225.1",
     "@pulumi/aws": "^6.0.0",
     "@pulumi/cloudflare": "^5.0.0"
   },
